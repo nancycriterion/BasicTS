@@ -38,17 +38,18 @@ class SparseTSF(nn.Module):
         # normalization and permute
         seq_mean = torch.mean(inputs, dim=1, keepdim=True)
         inputs = (inputs - seq_mean).permute(0, 2, 1) # [batch_size, num_features, input_len]
-
         # 1D convolution aggregation
         inputs = self.conv(inputs.reshape(-1, 1, self.input_len)).reshape(-1, num_features, self.input_len) + inputs
-
+        print(inputs.shape)
         # downsampling:
         # [batch_size,num_features,input_len] -> [batch_size * num_features, n, w] -> [batch_size * num_features, w, n]
         inputs = inputs.reshape(-1, self.input_segs, self.period_len).permute(0, 2, 1)
 
+        print(inputs.shape)
         # sparse forecasting
         prediction = self.projection(inputs)  # [batch_size * num_features, w, m]
 
+        print(prediction.shape)
         # upsampling:
         # [batch_size * num_features, w, m] -> [batch_size * num_features, m, w] -> [batch_size, num_features, output_len]
         prediction = prediction.permute(0, 2, 1).reshape(batch_size, num_features, self.output_len)

@@ -10,13 +10,15 @@ from basicts import BasicTSLauncher
 from basicts.configs import BasicTSImputationConfig
 from basicts.models.iTransformer import (iTransformerConfig,
                                          iTransformerForReconstruction)
+from basicts.models.TimeXer import TimeXerConfig, TimeXer
 
 
 def test_itransformerforr_smoke_test():
     input_len=32
     model_config = iTransformerConfig(
         input_len=input_len,
-        num_features=7
+        num_features=7,
+
         )
 
     BasicTSLauncher.launch_training(BasicTSImputationConfig(

@@ -63,7 +63,8 @@ class EncoderLayer(nn.Module):
 
         # Self-attention
         attn_output, attn_weights, _ = self.self_attn(
-            hidden_states=hidden_states,
+            # hidden_states=hidden_states,
+            hidden_states,
             attention_mask=attention_mask,
             output_attentions=output_attentions,
             **kwargs

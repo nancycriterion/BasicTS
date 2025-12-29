@@ -15,7 +15,7 @@ class STAR(nn.Module):
         self.ffn2 = MLPLayer(hidden_size + core_size, hidden_size, hidden_size, hidden_act)
         self.act = ACT2FN[hidden_act]
 
-    def forward(self, inputs: torch.Tensor):
+    def forward(self, inputs: torch.Tensor, *args, **kwargs):
         batch_size, num_features, _ = inputs.shape
 
         # FFN
@@ -36,4 +36,4 @@ class STAR(nn.Module):
         # FFN fusion
         combined_mean_cat = torch.cat([inputs, combined_mean], -1) # [batch_size, num_features, hidden_size + core_size]
         output = self.ffn2(combined_mean_cat)
-        return output, None
+        return output, None,None
