@@ -66,6 +66,7 @@ class MultiHeadAttention(nn.Module):
     ) -> Tuple[torch.Tensor, Optional[torch.Tensor], Optional[KVCache]]:
 
         # Query
+        
         B, L, _ = hidden_states.size()
         query = self._shape_q(self.q_proj(hidden_states), L)
 
