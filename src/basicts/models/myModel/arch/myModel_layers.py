@@ -133,26 +133,43 @@ class GCA2res_add(nn.Module):
     def __init__(self,cnn_out_channels,hidden_layers,seq_len,num_features,cnn_in_channels=1):
         super(GCA2res_add, self).__init__()
         self.conv_layers=nn.Sequential(
-            nn.Conv2d(cnn_in_channels, 32, kernel_size=3, padding=1),  # padding=1 保持 T
-            nn.BatchNorm2d(32),
+            nn.Conv2d(cnn_in_channels, 8, kernel_size=3, padding=1),  # padding=1 保持 T
+            nn.BatchNorm2d(8),
             nn.ReLU(),
+            nn.Dropout2d(0.1),
 
-            nn.Conv2d(32, 64, kernel_size=3, padding=1),
-            nn.BatchNorm2d(64),
+            nn.Conv2d(8, 16, kernel_size=3, padding=1),
+            nn.BatchNorm2d(16),
             nn.ReLU(),
+            nn.Dropout2d(0.1),
 
             # nn.Conv2d(64, 128, kernel_size=3, padding=1),
             # nn.BatchNorm2d(128),
             # nn.ReLU(),
 
-            nn.Conv2d(64, cnn_out_channels, kernel_size=1),
-            nn.ReLU()
+            nn.Conv2d(16, cnn_out_channels, kernel_size=1),
+            nn.ReLU(),
+            nn.Dropout2d(0.1),
         )
         self.linear_layers=nn.Linear(cnn_out_channels,1)
-        self.linear_layers2=nn.Linear(seq_len*seq_len,seq_len)
-        self.linear_layers3=nn.Linear(seq_len,seq_len*seq_len)
+        reduction_factor = 4
+        reduced_dim = seq_len // reduction_factor  # 96/4=24
+        self.linear_layers2 = nn.Sequential(
+            nn.Linear(seq_len*seq_len, reduced_dim),  # 9216→24
+            nn.ReLU(),
+            nn.Linear(reduced_dim, seq_len),  # 24→96
+            nn.LayerNorm(seq_len),
+        )
+
+        self.linear_layers3 = nn.Sequential(
+            nn.Linear(seq_len, reduced_dim),  # 96→24
+            nn.ReLU(), 
+            nn.Linear(reduced_dim, seq_len*seq_len),  # 24→9216
+            nn.LayerNorm(seq_len*seq_len),
+        )
+
         self.q_train=nn.Parameter(torch.randn(2,seq_len,seq_len,1))#可训练的向量
-        self.se_attn=nn.ModuleList(MultiHeadAttention(hidden_size=cnn_out_channels,n_heads=8) for _ in range(num_features))
+        self.se_attn=nn.ModuleList(MultiHeadAttention(hidden_size=cnn_out_channels,n_heads=4) for _ in range(num_features))
         self.attn_FFNs=[]
         for _ in range(hidden_layers):
             self.attn_FFNs.append(across_self_attention(num_features,seq_len,seq_len))

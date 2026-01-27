@@ -41,6 +41,12 @@ class myModel(nn.Module):
         self.GTUs=nn.ModuleList(self.GTUs)
         self.GTU_linear=nn.Linear(config.hidden_sizes[-1],config.output_len)
         self.linear=nn.Linear(3,1)
+        self.dropout=nn.Dropout(0.3)
+        self.residual_proj = nn.Sequential(
+            nn.Linear(config.input_len, config.output_len),  # 时间维度投影
+            nn.LayerNorm(config.output_len),
+
+        )
     
     def forward(self,inputs:torch.Tensor)->torch.Tensor:
         """
@@ -52,7 +58,8 @@ class myModel(nn.Module):
         Returns:
             torch.Tensor: Output tensor with shape [batch_size, output_len, num_features]
         """
-        
+        input_residual = self.residual_proj(inputs.permute(0,2,1))  # [B, F, input_len]
+        input_residual = input_residual.permute(0,2,1)  # [B, output_len, F]
         batch_size, input_len, num_features = inputs.shape
         imfs,residue,trend_pre=self.out_center_EDM(inputs)#[batch_size,max_imfs,seq_len,num_features],[batch_size,seq_len,num_features]
         device = next(self.parameters()).device
@@ -69,8 +76,11 @@ class myModel(nn.Module):
         res=res_cnn+res_gca
         for gtu in self.GTUs:
             res=gtu(res)#[batch_size,hidden_size[-1],num_features]
+            res=self.dropout(res)
         res=self.GTU_linear(res.permute(0,2,1)).permute(0,2,1)#[batch_size,output_len,num_features]
         # print(cp_gca.shape,trend_dms.shape,res.shape)
         output=torch.concat([cp_gca.unsqueeze(3),trend_dms.unsqueeze(3),res.unsqueeze(3)],dim=3)#[batch_size,output_len,num_features,3]
         output=self.linear(output).squeeze(3)#[batch_size,output_len,num_features]
+        # 残差连接（带可学习缩放）
+        output = output + input_residual * 0.1  # 初始小权重
         return output

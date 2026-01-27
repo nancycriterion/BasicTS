@@ -403,7 +403,10 @@ class BasicTSRunner:
     def _train_loop(self) -> None:
         """Train loop.
         """
-
+        best_loss = float('inf')   # 保存最好的 loss
+        wait = 0                    # 等待计数器
+        min_delta=1e-6
+        early_stopping_patience=3
         if self.training_unit == "epoch":
             self.num_steps = self.num_epochs * self.steps_per_epoch
             step_pbar = None
@@ -434,7 +437,8 @@ class BasicTSRunner:
                 self.callback_handler.trigger("on_epoch_start", self, epoch=self.epoch)
                 # epoch pbar
                 data_loader = tqdm(data_loader) if get_local_rank() == 0 else data_loader
-
+                
+            epoch_losses = []  # 保存当前 epoch 的所有 step loss
             # data loop
             for data in data_loader:
 
@@ -452,6 +456,8 @@ class BasicTSRunner:
                     loss = self._metric_forward(self.loss, forward_return)
                 loss_weight = self.taskflow.get_weight(forward_return) # task specific metric weight for averaging
                 self.update_meter("train/loss", loss.item(), loss_weight)
+                epoch_losses.append(loss.item())  # 保存 step loss
+                
                 if self.should_backward:
                     self.callback_handler.trigger("on_backward", self, loss=loss)
                     with (self.model.no_sync() if hasattr(self.model, "no_sync") else nullcontext()):
@@ -477,7 +483,19 @@ class BasicTSRunner:
                     # check if training should stop
                     if self.global_steps >= self.num_steps:
                         self.should_training_stop = True
+                    
+            # --- Epoch 结束时，计算平均 loss 并做 Early Stopping 检查 ---
+            epoch_avg_loss = sum(epoch_losses) / len(epoch_losses)
+            print(f"Epoch {self.epoch} average loss: {epoch_avg_loss:.6f}")
 
+            if epoch_avg_loss + min_delta < best_loss:  # loss 有下降
+                best_loss = epoch_avg_loss
+                wait = 0
+            else:  # loss 没下降
+                wait += 1
+                if wait >= early_stopping_patience:
+                    print(f"Early stopping at epoch {self.epoch}")
+                    self.should_training_stop = True
             # when training unit is epoch, call on epoch end
             if self.training_unit == "epoch":
                 self.callback_handler.trigger("on_epoch_end", self, epoch=self.epoch, step=self.global_steps)

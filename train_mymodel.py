@@ -1,6 +1,7 @@
 from t_data import * #datasets
 
 from src.basicts.models.myModel import myModel,MyModelConfig
+from torch.optim.lr_scheduler import ReduceLROnPlateau
 
 def test_smoke_test(dataset="ETTm1",num_features=7,input_len=96,output_len=32,period_len=96):
     model_config = MyModelConfig(
@@ -17,8 +18,9 @@ def test_smoke_test(dataset="ETTm1",num_features=7,input_len=96,output_len=32,pe
         gpus='0',
         batch_size=16,
         input_len=input_len,
-        num_epochs=5,
-        output_len=output_len
+        num_epochs=50,
+        output_len=output_len,
+
     ))
 
 if __name__=='__main__':
