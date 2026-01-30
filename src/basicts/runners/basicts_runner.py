@@ -194,7 +194,7 @@ class BasicTSRunner:
         self.should_training_stop = False
         self.should_optimizer_step = True
         self.should_backward = True
-
+        self.val_loss=float('inf')
         # set process title
         proctitle_name = f"{cfg.model.__class__.__name__}({cfg.dataset_params.dataset_name})"
         setproctitle.setproctitle(f"{proctitle_name}@BasicTS")
@@ -406,7 +406,7 @@ class BasicTSRunner:
         best_loss = float('inf')   # 保存最好的 loss
         wait = 0                    # 等待计数器
         min_delta=1e-6
-        early_stopping_patience=3
+        early_stopping_patience=5
         if self.training_unit == "epoch":
             self.num_steps = self.num_epochs * self.steps_per_epoch
             step_pbar = None
@@ -438,7 +438,6 @@ class BasicTSRunner:
                 # epoch pbar
                 data_loader = tqdm(data_loader) if get_local_rank() == 0 else data_loader
                 
-            epoch_losses = []  # 保存当前 epoch 的所有 step loss
             # data loop
             for data in data_loader:
 
@@ -456,7 +455,7 @@ class BasicTSRunner:
                     loss = self._metric_forward(self.loss, forward_return)
                 loss_weight = self.taskflow.get_weight(forward_return) # task specific metric weight for averaging
                 self.update_meter("train/loss", loss.item(), loss_weight)
-                epoch_losses.append(loss.item())  # 保存 step loss
+                
                 
                 if self.should_backward:
                     self.callback_handler.trigger("on_backward", self, loss=loss)
@@ -484,12 +483,8 @@ class BasicTSRunner:
                     if self.global_steps >= self.num_steps:
                         self.should_training_stop = True
                     
-            # --- Epoch 结束时，计算平均 loss 并做 Early Stopping 检查 ---
-            epoch_avg_loss = sum(epoch_losses) / len(epoch_losses)
-            print(f"Epoch {self.epoch} average loss: {epoch_avg_loss:.6f}")
-
-            if epoch_avg_loss + min_delta < best_loss:  # loss 有下降
-                best_loss = epoch_avg_loss
+            if self.val_loss + min_delta < best_loss:  # loss 有下降
+                best_loss = self.val_loss
                 wait = 0
             else:  # loss 没下降
                 wait += 1
@@ -523,6 +518,7 @@ class BasicTSRunner:
             self.callback_handler.trigger("on_compute_loss", self, forward_return=forward_return)
             # compute validation loss
             loss = self._metric_forward(self.loss, forward_return)
+            self.val_loss=loss.item()
             loss_weight = self.taskflow.get_weight(forward_return) # task specific metric weight for averaging
             self.update_meter(f"{meter_type}/loss", loss.item(), loss_weight)
             forward_return = self.taskflow.postprocess(self, forward_return)

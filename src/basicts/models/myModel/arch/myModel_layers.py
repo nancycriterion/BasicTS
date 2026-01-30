@@ -39,7 +39,8 @@ class EDM(nn.Module):
         batch_size,seq_len,num_features = x.shape
         #去中心化，分解，输出imfs和trend。
         detrended_tensor,trend_pre_tensor=self._batch_detrend(x)
-        imfs_tensor,residue_tensor=self._edm_div(detrended_tensor)
+        with torch.no_grad():
+            imfs_tensor,residue_tensor=self._edm_div(detrended_tensor)
         return imfs_tensor,residue_tensor,trend_pre_tensor
         
         
@@ -468,20 +469,30 @@ class CausalPredictor(nn.Module):
         return x
 
 class GTU(nn.Module):
-    def __init__(self,seq_len,hidden_len,dropout=0.1):
+    def __init__(self,seq_len,hidden_features,num_features,dropout=0.1):
         super(GTU, self).__init__()
         self.seq_len=seq_len
-        
-        self.conv_filter=nn.Conv1d(in_channels=seq_len,out_channels=hidden_len,kernel_size=7,padding=3)
-        self.conv_gate=nn.Conv1d(in_channels=seq_len,out_channels=hidden_len,kernel_size=7,padding=3)
-        
+        self.conv_filter = nn.Conv1d(
+            in_channels = num_features,
+            out_channels = hidden_features,
+            kernel_size = 7,
+            padding = 3
+        )
+        self.conv_gate = nn.Conv1d(
+            in_channels = num_features,
+            out_channels = hidden_features,
+            kernel_size = 7,
+            padding = 3
+        )
+                
         
         self.dropout=nn.Dropout(dropout)
     
     def forward(self,x):
+        x = x.permute(0, 2, 1) 
         f=self.conv_filter(x)
         g=self.conv_gate(x)
         h=f*g   
         h=self.dropout(h)
-
+        h=h.permute(0, 2, 1)
         return h

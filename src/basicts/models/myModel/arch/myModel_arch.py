@@ -26,20 +26,21 @@ class myModel(nn.Module):
         self.trend_DMS=nn.Sequential(*[MLPLayer(config.input_len,config.input_len) for _ in range(config.nums_DMS)],
                                         nn.Linear(config.input_len,config.output_len))
         self.res_cnn=nn.Sequential(
-            nn.Conv1d(config.input_len,config.input_len*2,kernel_size=17,padding=8),
+            nn.Conv1d(config.num_features,config.num_features*2,kernel_size=17,padding=8),
             nn.ReLU(),
-            nn.Conv1d(config.input_len*2,config.input_len*4,kernel_size=17,padding=8),
+            nn.Conv1d(config.num_features*2,config.num_features*4,kernel_size=17,padding=8),
             nn.ReLU(),
-            nn.Conv1d(config.input_len*4,config.input_len*8,kernel_size=17,padding=8),
+            nn.Conv1d(config.num_features*4,config.num_features,kernel_size=17,padding=8),
         )
-        self.res_gca_linear=nn.Linear((1+1)*config.input_len,config.input_len*8)
+        self.res_gca_linear=nn.Linear(config.num_features*2,config.num_features)
         self.GTUs=[]
-        hidden_size = [config.input_len*8]
+        hidden_size = [config.num_features]
         hidden_size.extend(config.hidden_sizes)
+        hidden_size.append(config.num_features)
         for i in range(1,len(hidden_size)):
-            self.GTUs.append(GTU(seq_len=hidden_size[i-1],hidden_len=hidden_size[i],dropout=config.dropout))
+            self.GTUs.append(GTU(seq_len=hidden_size[i-1],hidden_features=hidden_size[i],num_features=hidden_size[i-1],dropout=config.dropout))
         self.GTUs=nn.ModuleList(self.GTUs)
-        self.GTU_linear=nn.Linear(config.hidden_sizes[-1],config.output_len)
+        self.GTU_linear=nn.Linear(config.input_len,config.output_len)
         self.linear=nn.Linear(3,1)
         self.dropout=nn.Dropout(0.3)
         self.residual_proj = nn.Sequential(
@@ -70,9 +71,9 @@ class myModel(nn.Module):
         gca_gasf,res_gca=self.GCA[0](gasf_images)#[batch_size,2,seq_len,num_features]
         cp_gca=self.CaPre(gca_gasf).squeeze(1)#[batch_size,output_len,num_features]
         trend_dms=self.trend_DMS(trend_pre.permute(0,2,1)).permute(0,2,1)#[batch_size,output_len,num_features]
-        res_cnn=self.res_cnn(residue)#[batch_size,seq_len*8,num_features]
-        res_gca=res_gca.reshape(batch_size,-1,num_features).permute(0,2,1)#[batch_size,num_features,(1+1)*seq_len]
-        res_gca=self.res_gca_linear(res_gca).permute(0,2,1)#[batch_size,seq_len*8,num_features]
+        res_cnn=self.res_cnn(residue.permute(0,2,1)).permute(0,2,1)#[batch_size,seq_len*8,num_features]
+        res_gca=res_gca.reshape(batch_size,-1,num_features*2)#[batch_size,num_features,(1+1)*seq_len]
+        res_gca=self.res_gca_linear(res_gca)#[batch_size,seq_len*8,num_features]
         res=res_cnn+res_gca
         for gtu in self.GTUs:
             res=gtu(res)#[batch_size,hidden_size[-1],num_features]
