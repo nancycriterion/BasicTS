@@ -63,6 +63,8 @@ class myModel(nn.Module):
         input_residual = input_residual.permute(0,2,1)  # [B, output_len, F]
         batch_size, input_len, num_features = inputs.shape
         imfs,residue,trend_pre=self.out_center_EDM(inputs)#[batch_size,max_imfs,seq_len,num_features],[batch_size,seq_len,num_features]
+        imfs = torch.nan_to_num(imfs, nan=0.0, posinf=0.0, neginf=0.0)
+        residue = torch.nan_to_num(residue, nan=0.0, posinf=0.0, neginf=0.0)
         device = next(self.parameters()).device
         residue=residue.to(device)
         trend_pre=trend_pre.to(device)
