@@ -482,7 +482,7 @@ class BasicTSRunner:
                     # check if training should stop
                     if self.global_steps >= self.num_steps:
                         self.should_training_stop = True
-                    
+            self.val_loss = self.meter_pool.get_value("val/loss")   
             if self.val_loss + min_delta < best_loss:  # loss 有下降
                 best_loss = self.val_loss
                 wait = 0
@@ -518,7 +518,6 @@ class BasicTSRunner:
             self.callback_handler.trigger("on_compute_loss", self, forward_return=forward_return)
             # compute validation loss
             loss = self._metric_forward(self.loss, forward_return)
-            self.val_loss=loss.item()
             loss_weight = self.taskflow.get_weight(forward_return) # task specific metric weight for averaging
             self.update_meter(f"{meter_type}/loss", loss.item(), loss_weight)
             forward_return = self.taskflow.postprocess(self, forward_return)
