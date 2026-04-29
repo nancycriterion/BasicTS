@@ -4,20 +4,19 @@ from pathlib import Path
 import matplotlib
 import gc
 from collections import defaultdict
-
-matplotlib.rcParams['font.sans-serif'] = ['SimHei', 'Microsoft YaHei', 'DejaVu Sans']
-matplotlib.rcParams['axes.unicode_minus'] = False
-plt.rcParams['font.size'] = 20       # 👈 全局字体大小设为 18
+plt.rcParams['font.sans-serif'] = ['SimSun', 'Songti SC', 'STSong', 'SimHei']
+plt.rcParams['axes.unicode_minus'] = False
+plt.rcParams['font.size'] = 24      # 👈 全局字体大小设为 18
 
 
 base_path = Path(r"D:\code\big\basicts\BasicTS\checkpoints")
-output_path = Path(r"D:\code\big\basicts\BasicTS\comparison_plots0416")
+output_path = Path(r"comparison_plots0422")
 output_path.mkdir(parents=True, exist_ok=True)
 
 models = [
-    "Crossformer", "FreTS", "iTransformerForForecasting",
-    "myModel", #"myModel1", "myModel2", "myModel3",
-    "NLinear", "SOFTS", "SparseTSF", "TimeMixerForForecasting", "TimeXer"
+    "Crossformer", "FreTS", "iTransformerForForecasting", #"myModel1", "myModel2", "myModel3",
+    "NLinear", "SOFTS", "SparseTSF", "TimeMixerForForecasting", "TimeXer",
+    "myModel"
 ]
 
 def parse_dataset_info(folder_name):
@@ -36,7 +35,7 @@ def parse_dataset_info(folder_name):
     
     return folder_name, None, None, None
 
-def load_binary_data(file_path, max_points=200):
+def load_binary_data(file_path, max_points=100):
     """直接读取二进制文件为float32"""
     if not file_path.exists():
         return None
@@ -95,6 +94,13 @@ def find_all_test_results():
     
     return all_folders
 
+def get_display_name(model_name):
+    """获取模型显示名称，将myModel转换为MDFNet-EMD"""
+    if model_name == 'myModel':
+        return 'MDFNet-EMD'
+    else:
+        return model_name
+
 def plot_all_models_on_one_figure(dataset_name, pred_len, folders, feature_idx=0):
     """将所有模型的预测值和真实值画在一张图上"""
     if not folders:
@@ -114,54 +120,68 @@ def plot_all_models_on_one_figure(dataset_name, pred_len, folders, feature_idx=0
     targets = None
     if folders:
         target_file = folders[0]['path'] / "targets.npy"
-        targets_raw = load_binary_data(target_file, max_points=200)
+        targets_raw = load_binary_data(target_file, max_points=100)
         if targets_raw is not None:
             targets = targets_raw
     
     # 使用不同颜色绘制各模型的预测值
     colors = plt.cm.tab20(np.linspace(0, 1, len(folders)))
-    line_styles = ['-', '--', '-.', ':', '-', '--', '-.', ':', '-', '--']
+    line_styles = ['-', '--', '-.', ':', '-', '--', '-.', ':', '--', '-']
     
     valid_models = []
     
     for idx, folder_info in enumerate(folders):
         pred_file = folder_info['path'] / "prediction.npy"
-        predictions = load_binary_data(pred_file, max_points=200)
+        predictions = load_binary_data(pred_file, max_points=100)
         
         if predictions is not None and len(predictions) > 0:
-            valid_models.append(folder_info['model'])
+            display_name = get_display_name(folder_info['model'])
+            valid_models.append(display_name)
             x = np.arange(len(predictions))
             
-            color = colors[idx % len(colors)]
-            linestyle = line_styles[idx % len(line_styles)]
+            # 如果是myModel（MDFNet-EMD），使用红色粗线条
+            if folder_info['model'] == 'myModel':
+                color = 'red'
+                linestyle = '-'
+                linewidth = 2.5
+                alpha = 1.0
+                zorder = 50  # 确保在最上层显示
+            else:
+                color = colors[idx % len(colors)]
+                linestyle = line_styles[idx % len(line_styles)]
+                linewidth = 1.5
+                alpha = 0.8
+                zorder = idx
             
             plt.plot(x, predictions, 
                     color=color, 
                     linestyle=linestyle,
-                    label=folder_info['model'], 
-                    linewidth=1.5, 
-                    alpha=0.8)
+                    label=display_name, 
+                    linewidth=linewidth, 
+                    alpha=alpha,
+                    zorder=zorder)
     
     # 绘制真实值
     if targets is not None and len(targets) > 0:
         x = np.arange(len(targets))
         plt.plot(x, targets, 'k-', label='真实值', 
-                linewidth=2.5, alpha=0.95, zorder=100)
+                linewidth=1.5, alpha=0.95, zorder=100)
     
-    plt.xlabel('时间步', fontsize=20)
-    plt.ylabel('值', fontsize=20)
+    plt.xlabel('时间步', fontsize=24)
+    plt.ylabel('值', fontsize=24)
     # plt.legend(loc='best', fontsize=18, frameon=True, ncol=2)
     
-    plt.legend(loc='center left',fontsize=18, frameon=True, bbox_to_anchor=(1, 0.5))
+    plt.legend(loc='center left', fontsize=20, frameon=True, bbox_to_anchor=(1, 0.5))
     plt.grid(True, alpha=0.2)
     
     plt.tight_layout()
-    # plt.show()
     
     # 保存文件
     save_filename = f"{filename}_feature{feature_idx+1}.pdf"
     save_path = output_path / save_filename
     plt.savefig(save_path, dpi=150, bbox_inches='tight')
+    
+    # plt.show()
     plt.close()
     
     print(f"    已保存: {save_filename} (模型: {', '.join(valid_models)})")
