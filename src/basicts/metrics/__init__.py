@@ -9,6 +9,7 @@ from .r_square import masked_r2
 from .rmse import masked_rmse
 from .smape import masked_smape
 from .wape import masked_wape
+from .total_uncertainty_loss import total_uncertainty_loss
 
 ALL_METRICS = {
             'MAE': masked_mae,
@@ -21,6 +22,7 @@ ALL_METRICS = {
             'CORR': masked_corr,
             'HUBER': masked_huber,
             'Accuracy': accuracy,
+            'TotalUncertaintyLoss': total_uncertainty_loss
             }
 
 METRIC_METER = {

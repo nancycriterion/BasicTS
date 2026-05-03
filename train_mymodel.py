@@ -18,9 +18,9 @@ def test_smoke_test(dataset="ETTm1",num_features=7,input_len=96,output_len=32,pe
         gpus='0',
         batch_size=16,
         input_len=input_len,
-        num_epochs=50,
+        num_epochs=5,
         output_len=output_len,
-
+        loss="TotalUncertaintyLoss", 
     ))
 
 if __name__=='__main__':

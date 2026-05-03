@@ -25,12 +25,12 @@ class myModel(nn.Module):
                                    seq_len=config.input_len)
         self.trend_DMS=nn.Sequential(*[MLPLayer(config.input_len,config.input_len) for _ in range(config.nums_DMS)],
                                         nn.Linear(config.input_len,config.output_len))
-        self.res_cnn=nn.Sequential(
-            nn.Conv1d(config.num_features,config.num_features*2,kernel_size=17,padding=8),
+        self.res_cnn = nn.Sequential(
+            nn.Conv1d(config.num_features, config.num_features*2, kernel_size=7, padding=3),  # 17→7
             nn.ReLU(),
-            nn.Conv1d(config.num_features*2,config.num_features*4,kernel_size=17,padding=8),
+            nn.Conv1d(config.num_features*2, config.num_features*4, kernel_size=7, padding=3),
             nn.ReLU(),
-            nn.Conv1d(config.num_features*4,config.num_features,kernel_size=17,padding=8),
+            nn.Conv1d(config.num_features*4, config.num_features, kernel_size=7, padding=3),
         )
         self.res_gca_linear=nn.Linear(config.num_features*2,config.num_features)
         self.GTUs=[]
@@ -48,6 +48,11 @@ class myModel(nn.Module):
             nn.LayerNorm(config.output_len),
 
         )
+        self.variance_head = nn.Sequential(
+        nn.Linear(config.num_features, config.num_features),
+        nn.ReLU(),
+        nn.Linear(config.num_features,config.num_features)
+    )
     
     def forward(self,inputs:torch.Tensor)->torch.Tensor:
         """
@@ -85,5 +90,14 @@ class myModel(nn.Module):
         output=torch.concat([cp_gca.unsqueeze(3),trend_dms.unsqueeze(3),res.unsqueeze(3)],dim=3)#[batch_size,output_len,num_features,3]
         output=self.linear(output).squeeze(3)#[batch_size,output_len,num_features]
         # 残差连接（带可学习缩放）
-        output = output + input_residual * 0.1  # 初始小权重
-        return output
+        mu = output + input_residual * 0.1
+        
+        # 从 GTU 的输出 res 预测方差
+        log_variance = self.variance_head(res)  # [B, output_len, num_features]
+        
+        # 返回字典，loss函数会自动提取
+        return {
+            'prediction': mu,
+            'log_variance': log_variance,
+            'lambda_unc':0.1
+        }
