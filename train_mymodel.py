@@ -16,11 +16,16 @@ def test_smoke_test(dataset="ETTm1",num_features=7,input_len=96,output_len=32,pe
         dataset_name=dataset,
         mask_ratio=0.25,
         gpus='0',
-        batch_size=16,
+        batch_size=32,
         input_len=input_len,
-        num_epochs=5,
+        num_epochs=10,
         output_len=output_len,
         loss="TotalUncertaintyLoss", 
+        optimizer_params = {
+            "lr": 5e-5,        # 2e-4 → 5e-5，降低4倍
+            "weight_decay": 1e-3  # 增加正则化
+        },
+        lr=5e-5,
     ))
 
 if __name__=='__main__':

@@ -99,5 +99,5 @@ class myModel(nn.Module):
         return {
             'prediction': mu,
             'log_variance': log_variance,
-            'lambda_unc':0.1
+            'lambda_unc':0.02
         }

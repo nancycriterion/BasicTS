@@ -11,15 +11,15 @@ sys.path.append(os.path.abspath(__file__ + "/../src/"))
 from src.basicts import BasicTSLauncher
 from src.basicts.configs import BasicTSForecastingConfig
 
-datasets=[("BeijingAirQuality",7,24,[96,192,336,720],96),
-          ("Electricity",321,24,[96,192],96),
-          ("ETTh1",7,48,[96,192,336,720],96),
-          ("ETTh2",7,24,[96,192,336,720],96),
-          ("ETTm1",7,48,[96,192,336,720],96),
-          ("ETTm2",7,24,[96,192,336,720],96),
+datasets=[("BeijingAirQuality",7,24,[96,192,336],96),
+          # ("Electricity",321,24,[96,192],96),
+          ("ETTh1",7,48,[96,192,336],96),
+          ("ETTh2",7,24,[96,192,336],96),
+          ("ETTm1",7,48,[96,192,336],96),
+          ("ETTm2",7,24,[96,192,336],96),
           ("ExchangeRate",8,1,[96,192,336],96),
-          ("illness",7,4,[24,36,48,60],36),
+          # ("illness",7,4,[24,36,48,60],36),
         #   ("Traffic",862,24,[96,192,336,720],96),
-          ("Weather",21,6*24,[96,192,336,720],96)]
+          ("Weather",21,6*24,[96,192,336],96)]
 
 # for dataset,num_features,period_len,output_lens,input_len in datasets:
